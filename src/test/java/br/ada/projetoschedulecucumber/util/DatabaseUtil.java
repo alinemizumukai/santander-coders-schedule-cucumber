@@ -117,7 +117,7 @@ public class DatabaseUtil {
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement("INSERT INTO TASK(title, description, status, user_id, closed_at) VALUES(?, ?, ?, ?, ?)", PreparedStatement.RETURN_GENERATED_KEYS)
         ) {
-            statement.setString(1, task.getDescription());
+            statement.setString(1, task.getTitle());
             statement.setString(2, task.getDescription());
             statement.setString(3, task.getStatus().name());
             statement.setLong(4, task.getUser().getId());
