@@ -7,7 +7,7 @@ public class Task {
     private Long id;
     private String title;
     private String description;
-    private LocalDate closedAt;
+    private static LocalDate closedAt;
     private User user;
     private TaskStatus status;
     public Long getId() {

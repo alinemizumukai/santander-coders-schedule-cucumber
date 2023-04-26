@@ -6,6 +6,7 @@ import br.ada.projetoschedulecucumber.model.User;
 import br.ada.projetoschedulecucumber.util.DatabaseUtil;
 import com.google.common.net.HttpHeaders;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
@@ -22,7 +23,7 @@ import java.sql.SQLException;
 
 public class TaskStepDefinition {
 
-    private Gson gson = new Gson();
+    private Gson gson = new GsonBuilder().serializeNulls().create();
     private Task task = null;
     private RequestSpecification request = RestAssured.given()
             .baseUri("http://localhost:8080/api")
@@ -47,7 +48,7 @@ public class TaskStepDefinition {
 
     @When("I register the task")
     public void registerNewTask(){
-        String jsonBody = "{\"title\": \"" + task.getTitle() + "\", \"description\": \"" + task.getDescription() + "\", \"status\": \"" + task.getStatus() + "\", \"user\": { \"id\": " + task.getUser().getId() + " } }";
+        String jsonBody = gson.toJson(task);
         response = request.body(jsonBody).when().post("/tasks");
     }
 
@@ -57,13 +58,29 @@ public class TaskStepDefinition {
     }
 
     @Then("The task is found in database")
-    public void searchInDatabase() throws SQLException {
-        Long id = task.getId();
-        if (id == null) {
-           id = Long.valueOf(response.jsonPath().get("id").toString());
+    public void searchInDatabase_Success() throws SQLException {
+        var responseId = response.jsonPath().get("id");
+        if (responseId != null) {
+           task.setId(Long.valueOf(responseId.toString()));
         }
-        Task found = DatabaseUtil.findTaskById(id);
+        Task found = DatabaseUtil.findTaskById(task.getId());
         assertNotNull(found);
+    }
+
+    @Then("The task is not found in database")
+    public void searchInDatabase_notFound() throws SQLException {
+        var responseId = response.jsonPath().get("id");
+        if (responseId != null) {
+            task.setId(Long.valueOf(responseId.toString()));
+        }
+        Task found = DatabaseUtil.findTaskById(task.getId());
+        assertNull(found);
+    }
+
+    @And("The task status is {string}")
+    public void taskStatusEquals(String taskStatus) throws SQLException {
+        Task found = DatabaseUtil.findTaskById(task.getId());
+        assertEquals(taskStatus, found.getStatus().name());
     }
 
     @And("The response status is {int}")
@@ -77,22 +94,28 @@ public class TaskStepDefinition {
             task.setTitle(it.get("title"));
             task.setDescription(it.get("description"));
             task.setStatus(TaskStatus.valueOf(it.get("status")));
-            task.setClosedAt(null);
-            User user;
-            try {
-                user = DatabaseUtil.findUserById(Long.valueOf(it.get("userId")));
-                if (user == null) {
-                    user = new User();
-                    user.setId(1L);
-                    user.setName("Callie Torres");
-                    user.setUsername("ctorres");
-                    user.setPassword("ct-123");
-                    DatabaseUtil.insertUser(user);
+            User user = null;
+            if (it.get("userId") != null){
+                try {
+                    user = DatabaseUtil.findUserById(Long.valueOf(it.get("userId")));
+                    if (user == null && it.get("userId").equals("1")) {
+                        user = new User();
+                        user.setName("Callie Torres");
+                        user.setUsername("ctorres");
+                        user.setPassword("ct-123");
+                        DatabaseUtil.insertUser(user);
+                    } else if (user == null && it.get("userId").equals("2")){
+                        user = new User();
+                        user.setName("Addison Montgomery");
+                        user.setUsername("addie");
+                        user.setPassword("am-123");
+                        DatabaseUtil.insertUser(user);
+                    }
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
                 }
-                task.setUser(user);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
             }
+            task.setUser(user);
         });
         return task;
     }
