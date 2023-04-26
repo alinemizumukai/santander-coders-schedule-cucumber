@@ -20,6 +20,7 @@ import io.restassured.specification.RequestSpecification;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.sql.SQLException;
+import java.time.LocalDate;
 
 public class TaskStepDefinition {
 
@@ -31,7 +32,8 @@ public class TaskStepDefinition {
     private Response response;
 
     @Before
-    public void setup(){
+    public void setup() throws SQLException {
+        createUsersForTests();
         request.header(HttpHeaders.ACCEPT_LANGUAGE, "en-US");
     }
 
@@ -57,6 +59,33 @@ public class TaskStepDefinition {
         response = request.when().get("/tasks/" + task.getId());
     }
 
+    @When("I update the task")
+    public void updateMovie(DataTable data) throws SQLException {
+        task = DatabaseUtil.findTaskById(task.getId());
+        String title = data.asMap().get("title");
+        if (title != null) {
+            task.setTitle(title);
+        }
+        String description = data.asMap().get("description");
+        if (description != null) {
+            task.setDescription(description);
+        }
+        String userId =  data.asMap().get("userId");
+        if(userId != null){
+            task.setUser(DatabaseUtil.findUserById(Long.valueOf(userId)));
+        }
+        String status = data.asMap().get("status");
+        if (status != null) {
+            task.setStatus(TaskStatus.valueOf(status));
+        }
+        if (status != null && status.equals("CLOSE")) {
+            task.setClosedAt(LocalDate.now());
+        }
+        String jsonBody = gson.toJson(task);
+        task.setClosedAt(null);
+        response = request.body(jsonBody).when().put("/tasks/" + task.getId());
+    }
+
     @Then("The task is found in database")
     public void searchInDatabase_Success() throws SQLException {
         var responseId = response.jsonPath().get("id");
@@ -77,15 +106,46 @@ public class TaskStepDefinition {
         assertNull(found);
     }
 
-    @And("The task status is {string}")
+    @And("The task status should be {string}")
     public void taskStatusEquals(String taskStatus) throws SQLException {
         Task found = DatabaseUtil.findTaskById(task.getId());
         assertEquals(taskStatus, found.getStatus().name());
     }
 
+    @And("The task description should be {string}")
+    public void taskDescriptionEquals(String description) throws SQLException {
+        Task found = DatabaseUtil.findTaskById(task.getId());
+        assertEquals(description, found.getDescription());
+    }
+
+    @And("The userId should be {long}")
+    public void taskUserEquals(Long userId) throws SQLException {
+        Task found = DatabaseUtil.findTaskById(task.getId());
+        assertEquals(userId, found.getUser().getId());
+    }
+
     @And("The response status is {int}")
     public void statusEquals(Integer status) {
         response.then().statusCode(status);
+    }
+
+    private void createUsersForTests() throws SQLException {
+        User user1 = DatabaseUtil.findUserById(1L);
+        if (user1 == null) {
+            user1 = new User();
+            user1.setName("Callie Torres");
+            user1.setUsername("ctorres");
+            user1.setPassword("ct-123");
+            DatabaseUtil.insertUser(user1);
+        }
+        User user2 = DatabaseUtil.findUserById(2L);
+        if (user2 == null) {
+            user2 = new User();
+            user2.setName("Addison Montgomery");
+            user2.setUsername("addie");
+            user2.setPassword("am-123");
+            DatabaseUtil.insertUser(user2);
+        }
     }
 
     private Task createTaskFromDataTable(DataTable data) throws RuntimeException {
@@ -94,21 +154,17 @@ public class TaskStepDefinition {
             task.setTitle(it.get("title"));
             task.setDescription(it.get("description"));
             task.setStatus(TaskStatus.valueOf(it.get("status")));
+            if (it.get("status").equals("OPEN"))
+                task.setClosedAt(null);
             User user = null;
             if (it.get("userId") != null){
                 try {
                     user = DatabaseUtil.findUserById(Long.valueOf(it.get("userId")));
-                    if (user == null && it.get("userId").equals("1")) {
+                    if (user == null) {
                         user = new User();
-                        user.setName("Callie Torres");
-                        user.setUsername("ctorres");
-                        user.setPassword("ct-123");
-                        DatabaseUtil.insertUser(user);
-                    } else if (user == null && it.get("userId").equals("2")){
-                        user = new User();
-                        user.setName("Addison Montgomery");
-                        user.setUsername("addie");
-                        user.setPassword("am-123");
+                        user.setName("Arizona Robins");
+                        user.setUsername("arobins");
+                        user.setPassword("ar-123");
                         DatabaseUtil.insertUser(user);
                     }
                 } catch (SQLException e) {

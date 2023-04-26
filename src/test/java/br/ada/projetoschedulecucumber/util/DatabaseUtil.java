@@ -109,7 +109,9 @@ public class DatabaseUtil {
         task.setDescription(result.getString("description"));
         task.setStatus(TaskStatus.valueOf(result.getString("status")));
         task.setUser(findUserById(result.getLong("user_id")));
-        task.setClosedAt((LocalDate) result.getObject("closed_at"));
+        var closedAt = result.getObject("closed_at");
+        if( closedAt != null)
+            task.setClosedAt(LocalDate.parse(closedAt.toString()));
         return task;
     }
 

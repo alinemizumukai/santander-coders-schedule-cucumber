@@ -6,7 +6,7 @@ Feature: Register new tasks
          | Orthopedic Surgery   | Mr Steven     | OPEN      | 1         |
         When I register the task
         Then The task is found in database
-        And The task status is "OPEN"
+        And The task status should be "OPEN"
         And The response status is 201
 
     Scenario: I want to register new a task with CLOSE status - There's a bug in Api that allows to create tasks with close status
@@ -39,5 +39,5 @@ Feature: Register new tasks
          | Lecture at Grey Sloan Memorial   | OPEN      | 2         |
         When I register the task
         Then The task is found in database
-        And The task status is "OPEN"
+        And The task status should be "OPEN"
         And The response status is 201
