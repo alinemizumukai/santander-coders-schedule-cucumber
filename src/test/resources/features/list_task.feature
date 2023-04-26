@@ -7,3 +7,11 @@ Feature: List registered tasks
         When I search the task by id
         Then The task is found in database
         And The response status is 200
+
+    Scenario: I don't have a task registered
+        Given I don't have a task registered
+         | id            | 99         |
+        When I search the task by id equals 99
+        Then The task is not found in database
+        And The response status is 404
+        And The error message should be "Resource was not found"

@@ -48,6 +48,13 @@ public class TaskStepDefinition {
         DatabaseUtil.insertTask(task);
     }
 
+    @Given("I don't have a task registered")
+    public void iDontHaveTaskRegistered(DataTable data) throws SQLException {
+        String id = data.asMap().get("id");
+        task = DatabaseUtil.findTaskById(Long.valueOf(id));
+        assertNull(task);
+    }
+
     @When("I register the task")
     public void registerNewTask(){
         String jsonBody = gson.toJson(task);
@@ -57,6 +64,11 @@ public class TaskStepDefinition {
     @When("I search the task by id")
     public void searchTheTask() {
         response = request.when().get("/tasks/" + task.getId());
+    }
+
+    @When("I search the task by id equals {long}")
+    public void searchTheTaskByIdEquals(Long id) {
+        response = request.when().get("/tasks/" + id);
     }
 
     @When("I update the task")
@@ -82,7 +94,6 @@ public class TaskStepDefinition {
             task.setClosedAt(LocalDate.now());
         }
         String jsonBody = gson.toJson(task);
-        task.setClosedAt(null);
         response = request.body(jsonBody).when().put("/tasks/" + task.getId());
     }
 
@@ -102,7 +113,10 @@ public class TaskStepDefinition {
         if (responseId != null) {
             task.setId(Long.valueOf(responseId.toString()));
         }
-        Task found = DatabaseUtil.findTaskById(task.getId());
+        Task found = null;
+        if (task != null){
+            found = DatabaseUtil.findTaskById(task.getId());
+        }
         assertNull(found);
     }
 
@@ -124,9 +138,21 @@ public class TaskStepDefinition {
         assertEquals(userId, found.getUser().getId());
     }
 
+    @And("The close date should be found")
+    public void checkCloseAtDate() throws SQLException {
+        Task found = DatabaseUtil.findTaskById(task.getId());
+        assertNotNull(found.getClosedAt());
+    }
+
     @And("The response status is {int}")
     public void statusEquals(Integer status) {
         response.then().statusCode(status);
+    }
+
+    @And("The error message should be {string}")
+    public void errorMessageEquals(String msg) {
+        String responseMsg = response.jsonPath().get("message");
+        assertEquals(msg, responseMsg);
     }
 
     private void createUsersForTests() throws SQLException {

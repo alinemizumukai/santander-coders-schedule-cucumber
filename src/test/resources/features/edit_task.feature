@@ -28,4 +28,17 @@ Feature: Edit existing tasks
          | status      | CLOSE        |
         Then The task is found in database
         And The task status should be "CLOSE"
+        And The close date should be found
         And The response status is 200
+
+    Scenario: I want to reopen a closed task
+        Given I have a task registered
+         | title                | description          | status    | userId    |
+         | On-call shift        | On April 25          | CLOSE      | 2         |
+        When I update the task
+         | status      | OPEN        |
+        Then The task is found in database
+        And The task status should be "CLOSE"
+        And The close date should be found
+        And The response status is 422
+        And The error message should be "Task already close"
